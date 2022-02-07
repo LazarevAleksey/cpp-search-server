@@ -3,6 +3,8 @@
 // Много
 // Закомитьте изменения и отправьте их в свой репозиторий.
 // search_server_s1_t2_v2.cpp
+// Привет Бобрам
+// Hallow Bober
 
 #include <algorithm>
 #include <cmath>

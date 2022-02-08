@@ -1,10 +1,4 @@
-// Решите загадку: Сколько чисел от 1 до 1000 содержат как минимум одну цифру 3?
-// Напишите ответ здесь:
-// Много
-// Закомитьте изменения и отправьте их в свой репозиторий.
-// search_server_s1_t2_v2.cpp
-// Привет Бобрам
-// Hallow Bober
+// Version to 08_02_2022_23_24
 
 #include <algorithm>
 #include <cmath>
@@ -87,20 +81,15 @@ public:
             });
     }
 
-    //vector<Document> FindTopDocuments(const string& raw_query) const {
-    //    return FindTopDocuments(raw_query,
-    //        [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; });
-    //}
-
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus ds = DocumentStatus::ACTUAL) const {
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus doc_status = DocumentStatus::ACTUAL) const {
         return FindTopDocuments(raw_query,
-            [ds](int document_id, DocumentStatus status, int rating) { return status == ds; });
+            [doc_status](int document_id, DocumentStatus status, int rating) { return status == doc_status; });
     }
 
-    template<typename T>
-    vector<Document> FindTopDocuments(const string& raw_query, T status) const {
+    template<typename Predikat>
+    vector<Document> FindTopDocuments(const string& raw_query, Predikat filter) const {
         const Query query = ParseQuery(raw_query);
-        auto matched_documents = FindAllDocuments(query, status);
+        auto matched_documents = FindAllDocuments(query, filter);
 
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
@@ -225,8 +214,8 @@ private:
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
 
-    template<typename T>
-    vector<Document> FindAllDocuments(const Query& query, T statusik) const {
+    template<typename Predikat>
+    vector<Document> FindAllDocuments(const Query& query, Predikat filter) const {
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -234,7 +223,8 @@ private:
             }
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
-                if (statusik(document_id, documents_.at(document_id).status, documents_.at(document_id).rating)) {
+                auto doc_filter = documents_.at(document_id);
+                if (filter(document_id, doc_filter.status, doc_filter.rating)) {
                     document_to_relevance[document_id] += term_freq * inverse_document_freq;
                 }
             }

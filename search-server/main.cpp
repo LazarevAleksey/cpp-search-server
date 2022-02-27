@@ -15,6 +15,7 @@ using namespace std;
 
 /* Подставьте вашу реализацию класса SearchServer сюда */
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double ETALON_REVAL = 1e-6;
 
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
@@ -64,7 +65,7 @@ public:
         auto matched_documents = FindAllDocuments(query, document_predicate);
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
-                if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                if (abs(lhs.relevance - rhs.relevance) < ETALON_REVAL) {
                     return lhs.rating > rhs.rating;
                 }
                 else {
@@ -148,7 +149,9 @@ private:
         for (const int rating : ratings) {
             rating_sum += rating;
         }
+       // int tt= rating_sum / static_cast<int>(ratings.size());
         return rating_sum / static_cast<int>(ratings.size());
+        //return tt;
     }
 
     //string data;
@@ -260,7 +263,7 @@ void AssertImpl(bool value, const string& expr_str, const string& file, const st
 template <typename T, typename U>
 void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file,
     const string& func, unsigned line, const string& hint) {
-    if (t == u) {
+    if (t != u) {
         cout << boolalpha;
         cout << file << "("s << line << "): "s << func << ": "s;
         cout << "ASSERT_EQUAL("s << t_str << ", "s << u_str << ") failed: "s;
@@ -340,45 +343,81 @@ void TestUnExcludeMinusWordIntoQuery() {
     }
 }
 void TestSortReval() {
+    const int doc_id1 = 0;
+    const int doc_id2 = 1;
+    const int doc_id3 = 2;
+    const string content1 = "белый кот и модный ошейник"s;
+    const string content2 = "пушистый кот пушистый хвост"s;
+    const string content3 = "ухоженный пёс выразительные глаза"s;
+    const vector<int> ratings = { 1, 2, 3 };
     SearchServer server;
-    // Негативный тест
+    auto current_status = DocumentStatus::ACTUAL;
+    server.AddDocument(doc_id1, content1, current_status, ratings);
+    server.AddDocument(doc_id2, content2, current_status, ratings);
+    server.AddDocument(doc_id3, content3, current_status, ratings);
 
-    // Позитивный тест
+    vector<Document> rev = server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL);
+    bool t = false;
+    bool f = false;
+    for (unsigned i = 0; i < rev.size(); i++) {
+        if (i == rev.size()-1) { t = true; }
+        if (!t) {
+            if (rev[i].relevance >= rev[i + 1].relevance) { f = true; }
+            else { f = false; t=true; }
+        }
+    }
+    ASSERT(f);
 }
 void TestSortRating() {
-    const int doc_id = 4;
+    const int doc_id = 0;
     const string content = "cat in the city"s;
-    const vector<int> ratings = { 1, 2, 3 };
+    const vector<int> ratings_positiv = { 1, 2, 3 };
+    const vector<int> ratings_negativ = { -1, -2, -3 };
+    const vector<int> ratings_mixed = { 1, -2, 3 };
     const vector<int> ratings_zero = {};
+    const vector<vector<int>> rating = { ratings_positiv, ratings_negativ, ratings_mixed, ratings_zero };
 
     {
         SearchServer server;
         // Позитивный тест
         // Отсутствие оценок, ожидаемый рейтинг равен нулю.
-        for (int i = 0; i < 4; i++) {
-            auto current_status = static_cast<DocumentStatus>(i);
-            server.AddDocument(doc_id, content, current_status, ratings);
-            server.AddDocument(doc_id + 1, content, current_status, ratings_zero);
-            int res_rat = 0;
-            if (ratings.empty()) {
-                res_rat = 0;
+        int cnt = 0;
+        for (auto ratings : rating) {
+            for (int i = 0; i < 4; i++) {
+                auto current_status = static_cast<DocumentStatus>(i);
+                server.AddDocument(doc_id+cnt, content, current_status, ratings);
+               // server.AddDocument(doc_id + 1, content, current_status, ratings_zero);
+                int res_rat = 0;
+                if (ratings.empty()) {
+                    res_rat = 0;
+                }
+                int rating_sum = 0;
+                for (const int rating : ratings) {
+                    rating_sum += rating;
+                };
+                res_rat = rating_sum / static_cast<int>(ratings.size());
+                
+                vector<Document> found_docs = server.FindTopDocuments("cat"s, current_status);
+                sort(found_docs.begin(), found_docs.end(), [](Document& l, Document& r) {
+                    return l.id < r.id;
+                    });
+                if (i == 0) {
+                    //assert(found_docs[0].rating == res_rat);
+                    //ASSERT_EQUAL(found_docs[0].rating, res_rat);
+                    /*cerr <<"res_rat: " << res_rat << endl;
+                    cerr<<"size: "<< found_docs.size() << ", id " << found_docs[0+cnt].id << ", rating: " << found_docs[0+cnt].rating << endl;*/
+                    ASSERT_EQUAL(found_docs[0+cnt].rating, res_rat);
+                    //assert(found_docs[1].rating == 0);
+                    //ASSERT_EQUAL(found_docs[i].rating, 0);
+                }
+                else {
+                    //assert(found_docs.size() == 0);
+                    if (cnt == 0) {
+                        ASSERT_EQUAL(found_docs.size(), 0);
+                    }
+                }
             }
-            int rating_sum = 0;
-            for (const int rating : ratings) {
-                rating_sum += rating;
-            };
-            res_rat = rating_sum / static_cast<int>(ratings.size());
-            auto found_docs = server.FindTopDocuments("cat"s, current_status);
-            if (i == 0) {
-                //assert(found_docs[0].rating == res_rat);
-                ASSERT_EQUAL(found_docs[0].rating, res_rat);
-                //assert(found_docs[1].rating == 0);
-                ASSERT_EQUAL(found_docs[1].rating, 0);
-            }
-            else {
-                //assert(found_docs.size() == 0);
-                ASSERT_EQUAL(found_docs.size(), 0);
-            }
+            cnt++;
         }
     }
 }
@@ -398,4 +437,5 @@ int main() {
     TestSearchServer();
     // Если вы видите эту строку, значит все тесты прошли успешно
     cout << "Search server testing finished"s << endl;
+    return 0;
 }

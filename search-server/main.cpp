@@ -9,13 +9,16 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
+#include <cstdlib>
+#include <iomanip>
 
 
 using namespace std;
 
 /* Подставьте вашу реализацию класса SearchServer сюда */
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
-const double ETALON_REVAL = 1e-6;
+const double ETALON_RELEVANCE = 1e-6;
+
 
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
@@ -65,7 +68,7 @@ public:
         auto matched_documents = FindAllDocuments(query, document_predicate);
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
-                if (abs(lhs.relevance - rhs.relevance) < ETALON_REVAL) {
+                if (abs(lhs.relevance - rhs.relevance) < ETALON_RELEVANCE) {
                     return lhs.rating > rhs.rating;
                 }
                 else {
@@ -149,7 +152,7 @@ private:
         for (const int rating : ratings) {
             rating_sum += rating;
         }
-       // int tt= rating_sum / static_cast<int>(ratings.size());
+        // int tt= rating_sum / static_cast<int>(ratings.size());
         return rating_sum / static_cast<int>(ratings.size());
         //return tt;
     }
@@ -245,6 +248,22 @@ private:
    Подставьте сюда вашу реализацию макросов
    ASSERT, ASSERT_EQUAL, ASSERT_EQUAL_HINT, ASSERT_HINT и RUN_TEST
 */
+//template<typename Data>
+//void Print(ostream& out, const Data& container) {
+//    for (const Document& element : container) {
+//        out << element;
+//    }
+//}
+
+template<typename Element>
+ostream& operator<<(ostream& out, const vector<Element>& v) {
+    for (const auto& element : v) {
+        out << element;
+    }
+    return out;
+}
+
+
 void AssertImpl(bool value, const string& expr_str, const string& file, const string& func, unsigned line,
     const string& hint) {
     if (!value) {
@@ -275,11 +294,19 @@ void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& 
         abort();
     }
 }
+//#define ASSERT_EQUAL(a, b) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, ""s)
 #define ASSERT_EQUAL(a, b) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, ""s)
 #define ASSERT_HINT(expr, hint) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))
 #define RUN_TEST(a) a()
 
 // -------- Начало модульных тестов поисковой системы ----------
+//void PrintDocument(const Document& document) {
+//    cout << "{ "s
+//        << "document_id = "s << document.id << ", "s
+//        << "relevance = "s << document.relevance << ", "s
+//        << "rating = "s << document.rating
+//        << " }"s << endl;
+//}
 
 // Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
 void TestExcludeStopWordsFromAddedDocumentContent() {
@@ -343,30 +370,78 @@ void TestUnExcludeMinusWordIntoQuery() {
     }
 }
 void TestSortReval() {
-    const int doc_id1 = 0;
-    const int doc_id2 = 1;
-    const int doc_id3 = 2;
-    const string content1 = "белый кот и модный ошейник"s;
-    const string content2 = "пушистый кот пушистый хвост"s;
-    const string content3 = "ухоженный пёс выразительные глаза"s;
-    const vector<int> ratings = { 1, 2, 3 };
-    SearchServer server;
-    auto current_status = DocumentStatus::ACTUAL;
-    server.AddDocument(doc_id1, content1, current_status, ratings);
-    server.AddDocument(doc_id2, content2, current_status, ratings);
-    server.AddDocument(doc_id3, content3, current_status, ratings);
+        const int doc_id1 = 0;
+        const int doc_id2 = 1;
+        const int doc_id3 = 2;
+        const string content1 = "белый кот и модный ошейник"s;
+        const string content2 = "пушистый кот пушистый хвост"s;
+        const string content3 = "ухоженный пёс выразительные глаза"s;
+    {
+        
+        const vector<int> ratings = { 1, 2, 3 };
+        //const vector<int> ratings = {  };
+        SearchServer server;
+        for (unsigned i = 0; i < 4; i++) {
+            auto current_status = static_cast<DocumentStatus>(i);
 
-    vector<Document> rev = server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL);
-    bool t = false;
-    bool f = false;
-    for (unsigned i = 0; i < rev.size(); i++) {
-        if (i == rev.size()-1) { t = true; }
-        if (!t) {
-            if (rev[i].relevance >= rev[i + 1].relevance) { f = true; }
-            else { f = false; t=true; }
+            server.AddDocument(doc_id1, content1, current_status, ratings);
+            server.AddDocument(doc_id2, content2, current_status, ratings);
+            server.AddDocument(doc_id3, content3, current_status, ratings);
+
+            vector<Document> rev = server.FindTopDocuments("пушистый ухоженный кот"s, current_status);
+            for (unsigned i = 0; i < rev.size(); i++) {
+                if (i != rev.size() - 1) {
+                    ASSERT(rev[i].relevance >= rev[i + 1].relevance);
+                }
+                cerr << rev[i].relevance << endl;
+            }
         }
     }
-    ASSERT(f);
+    {
+            /*0.650672
+            0.274653
+            0.081093*/
+        const vector<int> ratings = { 1, 2, 3 };
+        //const vector<double> et_rat = { 0.650672, 0.274653, 0.081093 };
+        const vector<double> et_rat = { 0.650672, 0.274653, 0.081093 };
+        SearchServer server;
+        for (unsigned i = 0; i < 4; i++) {
+            auto current_status = static_cast<DocumentStatus>(i);
+            server.AddDocument(doc_id1, content1, current_status, ratings);
+            server.AddDocument(doc_id2, content2, current_status, ratings);
+            server.AddDocument(doc_id3, content3, current_status, ratings);
+            vector<Document> rev = server.FindTopDocuments("пушистый ухоженный кот"s, current_status);
+            for (unsigned i = 0; i < rev.size(); i++) {
+                ASSERT(abs(rev[i].relevance - et_rat[i]) < ETALON_RELEVANCE);
+            }
+        }
+    }
+    {
+        SearchServer search_server;
+        search_server.SetStopWords("и в на"s);
+
+        search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
+        search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
+        search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
+
+        Document doc1 = { 1, 0.866434,  5 };
+        Document doc2 = { 0, 0.173287, 2 };
+        Document doc3 = { 2, 0.173287, -1 };
+        const vector<Document> etalon1 = { doc1, doc2, doc3 };
+   
+        const vector <Document> etalon2 = { { 3, 0.231049, 9 } };
+        const vector <Document> etalon3 = { {  0, 0.173287,  2 },
+                                            { 2, 0.173287, -1 } };
+        //cout << "ACTUAL by default:"s << endl;
+       // for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s)) {
+        //const vector<Document> docc = search_server.FindTopDocuments("пушистый ухоженный кот"s);
+
+        const vector<Document>& document = search_server.FindTopDocuments("пушистый ухоженный кот"s,
+            [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; });
+        ASSERT_EQUAL(document, etalon1);
+         
+    }
 }
 void TestSortRating() {
     const int doc_id = 0;
@@ -375,6 +450,7 @@ void TestSortRating() {
     const vector<int> ratings_negativ = { -1, -2, -3 };
     const vector<int> ratings_mixed = { 1, -2, 3 };
     const vector<int> ratings_zero = {};
+    const vector<int> ratings_etalon = { 2, -2, 0, 0 };
     const vector<vector<int>> rating = { ratings_positiv, ratings_negativ, ratings_mixed, ratings_zero };
 
     {
@@ -385,33 +461,13 @@ void TestSortRating() {
         for (auto ratings : rating) {
             for (int i = 0; i < 4; i++) {
                 auto current_status = static_cast<DocumentStatus>(i);
-                server.AddDocument(doc_id+cnt, content, current_status, ratings);
-               // server.AddDocument(doc_id + 1, content, current_status, ratings_zero);
-                int res_rat = 0;
-                if (ratings.empty()) {
-                    res_rat = 0;
-                }
-                int rating_sum = 0;
-                for (const int rating : ratings) {
-                    rating_sum += rating;
-                };
-                res_rat = rating_sum / static_cast<int>(ratings.size());
-                
+                server.AddDocument(doc_id + cnt, content, current_status, ratings);
                 vector<Document> found_docs = server.FindTopDocuments("cat"s, current_status);
-                sort(found_docs.begin(), found_docs.end(), [](Document& l, Document& r) {
-                    return l.id < r.id;
-                    });
+                sort(found_docs.begin(), found_docs.end(), [](Document& l, Document& r) { return l.id < r.id; });
                 if (i == 0) {
-                    //assert(found_docs[0].rating == res_rat);
-                    //ASSERT_EQUAL(found_docs[0].rating, res_rat);
-                    /*cerr <<"res_rat: " << res_rat << endl;
-                    cerr<<"size: "<< found_docs.size() << ", id " << found_docs[0+cnt].id << ", rating: " << found_docs[0+cnt].rating << endl;*/
-                    ASSERT_EQUAL(found_docs[0+cnt].rating, res_rat);
-                    //assert(found_docs[1].rating == 0);
-                    //ASSERT_EQUAL(found_docs[i].rating, 0);
+                    ASSERT_EQUAL(found_docs[cnt].rating, ratings_etalon[cnt]);
                 }
                 else {
-                    //assert(found_docs.size() == 0);
                     if (cnt == 0) {
                         ASSERT_EQUAL(found_docs.size(), 0);
                     }

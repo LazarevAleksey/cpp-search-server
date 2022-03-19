@@ -101,22 +101,6 @@ public:
         if (f) {
             throw invalid_argument("Cтоп - слова содержат недопустимые символы!!!");
         }
-        
-    }
-    
-    //    if (IsValidWord(stop_words))
-    //    {
-    //        : stop_words_(MakeUniqueNonEmptyStrings(stop_words))
-    //        /*set<string> t = MakeUniqueNonEmptyStrings(stop_words);
-    //        stop_words_ = t;*/
-    //    }
-    //    else {
-    //        throw invalid_argument("Cтоп - слова содержат недопустимые символы!!!");
-    //         };
-    //{
-    //}
-    
-
     explicit SearchServer(const string& stop_words_text)
         : SearchServer(SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
     {

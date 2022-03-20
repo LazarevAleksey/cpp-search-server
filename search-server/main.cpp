@@ -88,59 +88,52 @@ public:
     inline static constexpr int INVALID_DOCUMENT_ID = -1;
 
     template <typename StringContainer>
+   // explicit SearchServer(const StringContainer& stop_words)
     explicit SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words))
-        
     { 
-        bool f = false;
         for (auto ch : stop_words) {
-            for (auto c : ch) {
-                if (c >= '\0' && c < ' ') { f = true; }
+            if (!IsValidWord(ch)) {
+                throw invalid_argument("Cтоп - слова содержат недопустимые символы!!!");
             }
         }
-        if (f) {
-            throw invalid_argument("Cтоп - слова содержат недопустимые символы!!!");
-        }
+    }
+
     explicit SearchServer(const string& stop_words_text)
         : SearchServer(SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
     {
     }
 
         void AddDocument(int document_id, const string& document, DocumentStatus status,
-        const vector<int>& ratings) 
-        {
-        if ((document_id < 0) || (documents_.count(document_id) > 0)) {
-            throw invalid_argument("ID меньше нуля или документ с таким ID уже существует");
-        }
-        vector<string> words;
-        if (!SplitIntoWordsNoStop(document, words)) {
-            throw invalid_argument("Что то проверяем");
+            const vector<int>& ratings) {
+            if ((document_id < 0) || (documents_.count(document_id) > 0)) {
+                throw invalid_argument("ID меньше нуля или документ с таким ID уже существует");
+            }
+            vector<string> words= SplitIntoWordsNoStop(document);
+
+            const double inv_word_count = 1.0 / words.size();
+            for (const string& word : words) {
+                word_to_document_freqs_[word][document_id] += inv_word_count;
+            }
+            documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
+            document_ids_.push_back(document_id);
         }
 
-        const double inv_word_count = 1.0 / words.size();
-        for (const string& word : words) {
-            word_to_document_freqs_[word][document_id] += inv_word_count;
-        }
-        documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
-        document_ids_.push_back(document_id);
-        }
-
-        [[nodiscard]] bool Proverka(const string& raw_query) const {
+        [[nodiscard]] bool Examination(const string& raw_query) const {
             bool res = true;
-            const Query query = ParseQuery(raw_query);
+            //const Query query = ParseQuery(raw_query);
             vector<string> vector_strok = SplitIntoWords(raw_query);
             for (const string& str : vector_strok) {
                 if (!IsValidWord(str)) { res = false; }
                 if (str[1] == '-') { res = false; }
                 if (str == "-") { res = false; }
             }
-            res = res && !documents_.empty();
             return res;
         }
 
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        if (!Proverka(raw_query)) { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
+      //  if (!Examination(raw_query)) { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
@@ -159,7 +152,7 @@ public:
     }
 
     vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status) const {
-        if (!Proverka(raw_query)) { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
+       // if (!Examination(raw_query)) { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
         return FindTopDocuments(
             raw_query,
             [status](int document_id, DocumentStatus document_status, int rating) {
@@ -168,7 +161,7 @@ public:
     }
 
     vector<Document> FindTopDocuments(const string& raw_query) const {
-        if (!Proverka(raw_query)) { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
+        //if (!Examination(raw_query)) { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
         return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
     }
 
@@ -177,15 +170,14 @@ public:
     }
 
     int GetDocumentId(int index) const {
-        if (index >= 0 && index < GetDocumentCount()) {
-            return document_ids_[index];
+        if (index < 0 || index > GetDocumentCount()) {
+            throw out_of_range("индекс переданного документа выходит за пределы допустимого диапазона");
         }
-        // return INVALID_DOCUMENT_ID;
-         throw out_of_range("индекс переданного документа выходит за пределы допустимого диапазона");
+        return document_ids_[index];
     }
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
-        if (Proverka(raw_query)) {
+      // if (Examination(raw_query)) {
             const Query query = ParseQuery(raw_query);
             vector<string> matched_words;
             for (const string& word : query.plus_words) {
@@ -206,7 +198,8 @@ public:
                 }
             }
 
-            if ((!documents_.empty()) && (documents_.count(document_id) != 0) && Proverka(raw_query)) {
+            //if ((!documents_.empty()) && (documents_.count(document_id) != 0) && Examination(raw_query)) {
+           // if ((!documents_.empty()) && (documents_.count(document_id) != 0)) {
                 //documents_.count(document_id) == 0;
                 auto temp_doc = documents_.at(document_id);
                 auto temp_st = temp_doc.status;
@@ -214,11 +207,11 @@ public:
                 tuple<vector<string>, DocumentStatus> res = { matched_words,  temp_st };
 
                 return  res;
-            }
+            //}
 
-            else { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
-        }
-        else { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
+            //else { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
+        //}
+        //else { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
         }
 
 private:
@@ -226,6 +219,7 @@ private:
         int rating;
         DocumentStatus status;
     };
+
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
@@ -235,26 +229,26 @@ private:
         return stop_words_.count(word) > 0;
     }
 
-    template <typename StringContainer>
-    static bool IsValidWord(const StringContainer& word) {
+
+    static bool IsValidWord(const string& word) {
         return none_of(word.begin(), word.end(), [](char c) {
             return c >= '\0' && c < ' ';
             });
     }
 
-    [[nodiscard]] bool SplitIntoWordsNoStop(const string& text, vector<string>& result) const {
-        result.clear();
+    vector<string> SplitIntoWordsNoStop(const string& text) const {
+        //result.clear();
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
             if (!IsValidWord(word)) {
-                return false;
+                throw invalid_argument("В словах поискового запроса есть недопустимые символы");
             }
             if (!IsStopWord(word)) {
                 words.push_back(word);
             }
         }
-        result.swap(words);
-        return true;
+        //result.swap(words);
+        return words;
     }
 
     static int ComputeAverageRating(const vector<int>& ratings) {
@@ -268,22 +262,43 @@ private:
         return rating_sum / static_cast<int>(ratings.size());
     }
 
+    //string data;
+    //bool is_minus;
+    //bool is_stop;
     struct QueryWord {
         string data;
         bool is_minus;
         bool is_stop;
     };
 
+        //bool res = true;
+        //vector<string> vector_strok = SplitIntoWords(raw_query);
+        //for (const string& str : vector_strok) {
+        //    if (!IsValidWord(str)) { res = false; }
+        //    if (str[1] == '-') { res = false; }
+        //    if (str == "-") { res = false; }
+        //}
+        //return res;
+
     QueryWord ParseQueryWord(string text) const {
-        bool is_minus = false;
-        // Word shouldn't be empty
-        if (text[0] == '-') {
-            is_minus = true;
-            text = text.substr(1);
-        }
-        return { text, is_minus, IsStopWord(text) };
+       // if (Examination(text)) {
+            bool res = (!IsValidWord(text))|| (text[1] == '-')|| (text == "-");
+            if (res) {
+                bool is_minus = false;
+                // Word shouldn't be empty
+                if (text[0] == '-') {
+                    is_minus = true;
+                    text = text.substr(1);
+                }
+                return { text, is_minus, IsStopWord(text) };
+            }
+            else { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
+       // }
+       // else { throw invalid_argument("В словах поискового запроса есть недопустимые символы"); }
     }
 
+    //set<string> plus_words;
+    //set<string> minus_words;
     struct Query {
         set<string> plus_words;
         set<string> minus_words;
@@ -293,9 +308,9 @@ private:
         Query query;
         for (const string& word : SplitIntoWords(text)) {
             const QueryWord query_word = ParseQueryWord(word);
-            if (!query_word.is_stop) {
-                if (query_word.is_minus) {
-                    query.minus_words.insert(query_word.data);
+            if (!query_word.is_stop) {  // если слово из запроса не стоп
+                if (query_word.is_minus) {  // если из запроса  слово минус
+                    query.minus_words.insert(query_word.data); // добавляем в множестов  минус слов
                 }
                 else {
                     query.plus_words.insert(query_word.data);

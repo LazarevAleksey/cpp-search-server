@@ -1,4 +1,3 @@
-//Вставьте сюда своё решение из урока «‎Очередь запросов».‎
 #pragma once
 #include <iostream>
 
@@ -24,7 +23,6 @@ private:
     size_t size_;
 };
 
-// paginator.h
 template <typename Iterator>
 std::ostream& operator<<(std::ostream& out, const IteratorRange<Iterator>& range) {
     for (Iterator it = range.begin(); it != range.end(); ++it) {
@@ -55,10 +53,9 @@ public:
         return pages_.size();
     }
 private:
-    vector<IteratorRange<Iterator>> pages_;
+    std::vector<IteratorRange<Iterator>> pages_;
 };
 
-// paginator.h
 template <typename Container>
 auto Paginate(const Container& c, size_t page_size) {
     return Paginator(begin(c), end(c), page_size);

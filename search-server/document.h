@@ -1,9 +1,5 @@
-//Вставьте сюда своё решение из урока «‎Очередь запросов».‎
 #pragma once
 #include <vector>
-
-//#include "search_server.h"
-
 
 struct Document {
 	Document(); 
@@ -14,7 +10,6 @@ struct Document {
 	    int rating = 0;
 	};
 
-// document.h
 enum class DocumentStatus {
 	ACTUAL,
 	IRRELEVANT,

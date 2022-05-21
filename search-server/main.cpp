@@ -1,11 +1,8 @@
-//Вставьте сюда своё решение из урока «‎Очередь запросов».‎
-//#include <iostream>
-
 #include "search_server.h"
 #include "request_queue.h"
 #include "paginator.h"
 
-//using namespace std;
+using namespace std;
 
 int main() {
     SearchServer search_server("and in at"s);

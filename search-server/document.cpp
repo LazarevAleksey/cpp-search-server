@@ -2,11 +2,9 @@
 #include <iostream>
 #include <string>
 
-//#include"search_server.h"
 #include "document.h"
 
 using namespace std;
-
 
 	Document::Document() = default;
 	Document::Document(int id, double relevance, int rating)

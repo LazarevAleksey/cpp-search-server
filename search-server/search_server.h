@@ -4,6 +4,7 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <set>
 
 #include "string_processing.h"
 #include "document.h"
@@ -39,12 +40,27 @@ public:
 
     int GetDocumentCount() const;
 
-    int GetDocumentId(int index) const;
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
+    void RemoveDocument(int document_id);
+
+    std::map<int, std::set<std::string>>& RetDoc();
+
+    //int GetDocumentId(int index) const;
+
+    auto begin() const {
+        return document_ids_.begin();
+    }
+
+    auto end() const {
+        return document_ids_.end();
+    }
+    
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query,
         int document_id) const;
 
 private:
+    //rating, status
     struct DocumentData {
         int rating;
         DocumentStatus status;
@@ -54,6 +70,11 @@ private:
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
     std::vector<int> document_ids_;
+
+    // Новый map
+    std::map<int, std::map<std::string, double>> document_to_word_freqs_;
+    std::map<std::string, double> dummy;
+    std::map<int, std::set<std::string>> doc_;
 
     bool IsStopWord(const std::string& word) const;
 
@@ -88,7 +109,7 @@ private:
 
     Query ParseQuery(const std::string& text) const;
 
-     double ComputeWordInverseDocumentFreq(const std::string& word) const;
+    double ComputeWordInverseDocumentFreq(const std::string& word) const;
 
     template <typename DocumentPredicate>
     std::vector<Document> FindAllDocuments(const Query& query,
@@ -152,3 +173,4 @@ void AddDocument(SearchServer& search_server, int document_id, const std::string
 void FindTopDocuments(const SearchServer& search_server, const std::string& raw_query);
 
 void MatchDocuments(const SearchServer& search_server, const std::string& query);
+

@@ -1,14 +1,21 @@
 #include "search_server.h"
 
+#include <cmath>
+#include <algorithm>
+#include <iostream>
+//#include <set>
+
     void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status,
         const std::vector<int>& ratings) {
         if ((document_id < 0) || (documents_.count(document_id) > 0)) {
             throw std::invalid_argument("Invalid document_id");
         }
-        const auto words = SplitIntoWordsNoStop(document);
+        const auto words = SplitIntoWordsNoStop(document); 
         const double inv_word_count = 1.0 / words.size();
         for (const std::string& word : words) {
+            doc_[document_id].insert(word);
             word_to_document_freqs_[word][document_id] += inv_word_count;
+            document_to_word_freqs_[document_id][word] = word_to_document_freqs_[word][document_id];
         }
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
         document_ids_.push_back(document_id);
@@ -23,14 +30,6 @@
 
     std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const {
         return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
-    }
-
-    int SearchServer::GetDocumentCount() const {
-        return documents_.size();
-    }
-
-    int SearchServer::GetDocumentId(int index) const {
-        return document_ids_.at(index);
     }
 
     std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query,
@@ -140,15 +139,56 @@
 
     void MatchDocuments(const SearchServer& search_server, const std::string& query) {
         try {
-            std::cout << "Matching for request: " << query << std::endl;
-            const int document_count = search_server.GetDocumentCount();
-            for (int index = 0; index < document_count; ++index) {
-                const int document_id = search_server.GetDocumentId(index);
-                const auto [words, status] = search_server.MatchDocument(query, document_id);
-                PrintMatchDocumentResult(document_id, words, status);
+            std::cout << "Matching for request: " << query << std::endl; 
+            for (auto document_id = search_server.begin(); document_id != search_server.end(); document_id++) {
+                const auto [words, status] = search_server.MatchDocument(query, *document_id);
+                PrintMatchDocumentResult(*document_id, words, status);
             }
         }
         catch (const std::exception& e) {
             std::cout << "Error in matchig request "<< query << ": " << e.what() << std::endl;
         }
     }
+
+    int SearchServer::GetDocumentCount() const {
+        return documents_.size();
+    }
+
+    /*int SearchServer::GetDocumentId(int index) const {
+        return document_ids_.at(index);
+    }*/
+
+    // std::map<int, std::map<std::string, double>> document_to_word_freqs_;
+    const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+        if (!document_to_word_freqs_.at(document_id).empty()) {
+            return document_to_word_freqs_.at(document_id);
+        }
+        else {
+            return dummy;
+        }
+    }
+
+    void SearchServer:: RemoveDocument(int document_id) {
+        documents_.erase(document_id);
+        auto it = document_ids_.begin();
+        for (; it != document_ids_.end(); it++) {
+            if (document_id == *it) { break; }
+        }
+        document_ids_.erase(it);
+
+       for (auto itm = word_to_document_freqs_.begin(); itm != word_to_document_freqs_.end(); itm++) {
+           auto st = itm->second.find(document_id);
+           if (st != itm->second.end()) {
+               itm->second.erase(st);
+           }
+       }
+       std::cerr << "Found duplicate document id " << document_id << std::endl;
+    }
+
+    std::map<int, std::set<std::string>>& SearchServer:: RetDoc() {
+        return doc_;
+    }
+
+
+
+

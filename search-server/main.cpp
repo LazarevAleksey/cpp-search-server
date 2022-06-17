@@ -2,10 +2,15 @@
 #include "request_queue.h"
 #include "paginator.h"
 #include "remove_duplicates.h"
+#include "log_duration.h"
+
+#include <locale.h>
+
 
 using namespace std;
 
 int main() {
+    setlocale(LC_ALL, "Rus");
     SearchServer search_server("and with"s);
 
     AddDocument(search_server, 1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
@@ -36,8 +41,26 @@ int main() {
     AddDocument(search_server, 9, "nasty rat with curly hair"s, DocumentStatus::ACTUAL, { 1, 2 });
 
     cout << "Before duplicates removed: "s << search_server.GetDocumentCount() << endl;
-    RemoveDuplicates(search_server);
+    {
+       // LOG_DURATION("RemoveDuplicates");
+        LOG_DURATION_STREAM("RemoveDuplicates", cout);
+        //LogDuration guard("Long task", cout);
+        RemoveDuplicates(search_server);
+    }
     cout << "After duplicates removed: "s << search_server.GetDocumentCount() << endl;
+
+    {
+       // LOG_DURATION("MatchDocuments");
+        LOG_DURATION_STREAM("MatchDocuments", cout);
+        MatchDocuments(search_server, "пушистый -пёс"s);
+    }
+    
+    {
+       // LOG_DURATION("FindTopDocuments");
+        LOG_DURATION_STREAM("FindTopDocuments", cout);
+        FindTopDocuments(search_server, "пушистый -кот"s);
+    }
+    
 }
 
 // Main with old lesson.

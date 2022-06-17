@@ -1,24 +1,33 @@
 // в качестве заготовки кода используйте последнюю версию своей поисковой системы
 #include "remove_duplicates.h"
 
+
+template <typename Map>
+bool CompareMap(Map const& lhs, Map const& rhs) {
+
+    auto pred = [](auto a, auto b)
+    { return a.first == b.first; };
+
+    return lhs.size() == rhs.size()
+        && std::equal(lhs.begin(), lhs.end(), rhs.begin(), pred);
+}
+
 void RemoveDuplicates(SearchServer& search_server) {
     std::set<int> duplicate;
-    auto st = search_server.RetDoc().begin();
-    auto end = search_server.RetDoc().end();
 
-    for (; st != end; st++) {
-        auto in = st->second;  // множество слов 1-го документа
-        auto tt = st;
-        for (auto strt = (++tt); strt != end; strt++) {
-            if (in == strt->second) {
-                duplicate.insert(strt->first);
-            }
-        }
-
+    for (auto st = search_server.begin(); st != search_server.end(); st++) {
+       auto mymap = search_server.GetWordFrequencies((st->first)); // по id получили словарь первого документа
+       auto t = st;
+       auto st2 = (++t);
+       for (; st2 != search_server.end(); st2++) {
+          auto mymap1 = search_server.GetWordFrequencies((st2->first));
+           bool f = CompareMap(mymap, mymap1);
+           if (f) {
+               duplicate.insert(st2->first);
+           }
+       }
     }
-    //for (auto i : duplicate) {
-//    std::cerr << "Found duplicate document id " << i << std::endl;
-//}
+
     for (const int i : duplicate) {
         search_server.RemoveDocument(i);
     }

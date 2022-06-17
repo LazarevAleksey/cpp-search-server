@@ -3,7 +3,6 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
-//#include <set>
 
     void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status,
         const std::vector<int>& ratings) {
@@ -13,12 +12,11 @@
         const auto words = SplitIntoWordsNoStop(document); 
         const double inv_word_count = 1.0 / words.size();
         for (const std::string& word : words) {
-            doc_[document_id].insert(word);
             word_to_document_freqs_[word][document_id] += inv_word_count;
             document_to_word_freqs_[document_id][word] = word_to_document_freqs_[word][document_id];
         }
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
-        document_ids_.push_back(document_id);
+        document_ids_[document_id];
     }
 
     std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
@@ -111,7 +109,6 @@
     double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) const {
         double res = GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size();
         double res_ret = log(res);
-        // long res_ret = std::log(res);
         return res_ret;
     }
 
@@ -141,8 +138,8 @@
         try {
             std::cout << "Matching for request: " << query << std::endl; 
             for (auto document_id = search_server.begin(); document_id != search_server.end(); document_id++) {
-                const auto [words, status] = search_server.MatchDocument(query, *document_id);
-                PrintMatchDocumentResult(*document_id, words, status);
+                const auto [words, status] = search_server.MatchDocument(query, document_id->first);
+                PrintMatchDocumentResult(document_id->first, words, status);
             }
         }
         catch (const std::exception& e) {
@@ -154,40 +151,36 @@
         return documents_.size();
     }
 
-    /*int SearchServer::GetDocumentId(int index) const {
-        return document_ids_.at(index);
-    }*/
-
-    // std::map<int, std::map<std::string, double>> document_to_word_freqs_;
     const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
-        if (!document_to_word_freqs_.at(document_id).empty()) {
-            return document_to_word_freqs_.at(document_id);
+        static std::map<std::string, double> dummy;
+        if (document_to_word_freqs_.count(document_id) != 0) {
+            if (!document_to_word_freqs_.at(document_id).empty()) {
+                return document_to_word_freqs_.at(document_id);
+            }
         }
-        else {
             return dummy;
-        }
     }
 
     void SearchServer:: RemoveDocument(int document_id) {
-        documents_.erase(document_id);
-        auto it = document_ids_.begin();
-        for (; it != document_ids_.end(); it++) {
-            if (document_id == *it) { break; }
-        }
-        document_ids_.erase(it);
+        if (documents_.count(document_id)>0) { documents_.erase(document_id); }
+        if (document_ids_.count(document_id)>0) { document_ids_.erase(document_id); }
 
-       for (auto itm = word_to_document_freqs_.begin(); itm != word_to_document_freqs_.end(); itm++) {
-           auto st = itm->second.find(document_id);
-           if (st != itm->second.end()) {
-               itm->second.erase(st);
-           }
-       }
+        const std::map<std::string, double>& mapremove = GetWordFrequencies(document_id);
+        for (auto st = mapremove.begin(); st != mapremove.end(); st++) {
+            std::string key = st->first;
+            if (word_to_document_freqs_.count(key) > 0) {
+                auto temp = word_to_document_freqs_[key];
+                if (temp.count(document_id)>0) {
+                    temp.erase(document_id);
+                }
+            }
+        }
+
+        if (document_to_word_freqs_.count(document_id) > 0) { document_to_word_freqs_.erase(document_id); }
+
        std::cerr << "Found duplicate document id " << document_id << std::endl;
     }
 
-    std::map<int, std::set<std::string>>& SearchServer:: RetDoc() {
-        return doc_;
-    }
 
 
 

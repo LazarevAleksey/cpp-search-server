@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <set>
+#include <numeric>
 
 #include "string_processing.h"
 #include "document.h"
@@ -44,10 +45,6 @@ public:
 
     void RemoveDocument(int document_id);
 
-    std::map<int, std::set<std::string>>& RetDoc();
-
-    //int GetDocumentId(int index) const;
-
     auto begin() const {
         return document_ids_.begin();
     }
@@ -60,7 +57,6 @@ public:
         int document_id) const;
 
 private:
-    //rating, status
     struct DocumentData {
         int rating;
         DocumentStatus status;
@@ -69,12 +65,10 @@ private:
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
-    std::vector<int> document_ids_;
+    std::map<int, int> document_ids_;
 
     // Новый map
     std::map<int, std::map<std::string, double>> document_to_word_freqs_;
-    std::map<std::string, double> dummy;
-    std::map<int, std::set<std::string>> doc_;
 
     bool IsStopWord(const std::string& word) const;
 
@@ -87,10 +81,7 @@ private:
     std::vector<std::string> SplitIntoWordsNoStop(const std::string& text) const;
 
     static int ComputeAverageRating(const std::vector<int>& ratings) {
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
+        int rating_sum = std::accumulate(ratings.begin(), ratings.end(), (*ratings.begin()));
         return rating_sum / static_cast<int>(ratings.size());
     }
 
@@ -124,7 +115,7 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
     auto matched_documents = FindAllDocuments(query, document_predicate);
 
     sort(matched_documents.begin(), matched_documents.end(),
-        [](const Document& lhs, const Document& rhs) {
+        [](const Document& lhs, const Document&     rhs) {
             return lhs.relevance > rhs.relevance
                 || (std::abs(lhs.relevance - rhs.relevance) < 1e-6 && lhs.rating > rhs.rating);
         });

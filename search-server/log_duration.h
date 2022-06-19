@@ -16,17 +16,17 @@ using namespace literals;
 class LogDuration {
 public:
 
-    LogDuration(const std::string& id, ostream& out) : id_(id), out_(std::cerr) {
-    }
+	LogDuration(const std::string& id, ostream& out) : id_(id), out_(std::cerr) {
+	}
 
-    ~LogDuration() {
-        const auto end_time = steady_clock::now();
-        const auto dur = end_time - start_time_;
-        cout <<  "Operation time" << ": "s << duration_cast<milliseconds>(dur).count() << " ms"s << endl;
-    }
+	~LogDuration() {
+		const auto end_time = steady_clock::now();
+		const auto dur = end_time - start_time_;
+		cout << "Operation time" << ": "s << duration_cast<milliseconds>(dur).count() << " ms"s << endl;
+	}
 
 private:
-    ostream& out_ = std::cerr;
-    const std::string id_="";
-    const steady_clock::time_point start_time_ = steady_clock::now();
+	ostream& out_ = std::cerr;
+	const std::string id_ = "";
+	const steady_clock::time_point start_time_ = steady_clock::now();
 };

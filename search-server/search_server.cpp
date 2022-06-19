@@ -27,11 +27,13 @@
     }
 
     std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const {
+        LOG_DURATION_STREAM("FindTopDocuments", cout);
         return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
     }
 
     std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query,
         int document_id) const {
+        LOG_DURATION_STREAM("MatchDocuments", cout);
         const auto query = ParseQuery(raw_query);
 
         std::vector<std::string> matched_words;
@@ -152,22 +154,19 @@
     }
 
     const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
-        static std::map<std::string, double> dummy;
+        static const std::map<std::string, double> dummy;
         if (document_to_word_freqs_.count(document_id) != 0) {
-            if (!document_to_word_freqs_.at(document_id).empty()) {
                 return document_to_word_freqs_.at(document_id);
-            }
         }
             return dummy;
     }
 
     void SearchServer:: RemoveDocument(int document_id) {
-        if (documents_.count(document_id)>0) { documents_.erase(document_id); }
-        if (document_ids_.count(document_id)>0) { document_ids_.erase(document_id); }
+        documents_.erase(document_id); 
+        document_ids_.erase(document_id); 
 
-        const std::map<std::string, double>& mapremove = GetWordFrequencies(document_id);
-        for (auto st = mapremove.begin(); st != mapremove.end(); st++) {
-            std::string key = st->first;
+        for (const auto& [key, _] : GetWordFrequencies(document_id)){
+            std::string key = key;
             if (word_to_document_freqs_.count(key) > 0) {
                 auto temp = word_to_document_freqs_[key];
                 if (temp.count(document_id)>0) {

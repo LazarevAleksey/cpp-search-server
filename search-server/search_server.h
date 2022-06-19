@@ -9,6 +9,7 @@
 
 #include "string_processing.h"
 #include "document.h"
+#include "log_duration.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
@@ -67,7 +68,6 @@ private:
     std::map<int, DocumentData> documents_;
     std::map<int, int> document_ids_;
 
-    // Новый map
     std::map<int, std::map<std::string, double>> document_to_word_freqs_;
 
     bool IsStopWord(const std::string& word) const;
@@ -81,8 +81,15 @@ private:
     std::vector<std::string> SplitIntoWordsNoStop(const std::string& text) const;
 
     static int ComputeAverageRating(const std::vector<int>& ratings) {
-        int rating_sum = std::accumulate(ratings.begin(), ratings.end(), (*ratings.begin()));
-        return rating_sum / static_cast<int>(ratings.size());
+        int r_s = ratings.size();
+        const int ZERO = 0;
+        if (r_s !=ZERO) {
+            int rating_sum = std::accumulate(ratings.begin(), ratings.end(), (*ratings.begin()));
+            return rating_sum / static_cast<int>(ratings.size());
+        }
+        else {
+            return ZERO;
+        }
     }
 
     struct QueryWord {
